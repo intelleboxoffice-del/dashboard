@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Интеллебокс · Дашборд запуска</title>
+<style>
+:root{
+  --bg:#0f1226; --panel:#171a35; --panel2:#1e2247; --line:#2b2f57;
+  --txt:#e9ebff; --mut:#9aa0d0; --acc:#6c7bff; --acc2:#8b5cf6;
+  --green:#2fbf71; --amber:#f5a623; --red:#f2545b; --gray:#6b7099;
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#0e1024,#12152e);color:var(--txt);
+  font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1280px;margin:0 auto;padding:22px 20px 60px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+h1{margin:0;font-size:22px;letter-spacing:.2px}
+.sub{color:var(--mut);font-size:13px;margin-top:4px}
+.upd{color:var(--mut);font-size:12px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.stat .n{font-size:26px;font-weight:700}
+.stat .l{color:var(--mut);font-size:12px;margin-top:2px}
+.stat.acc{background:linear-gradient(135deg,#242a63,#1a1d3f)}
+section{margin-bottom:26px}
+.sh{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+.sh h2{font-size:15px;margin:0;letter-spacing:.3px}
+.sh .cnt{color:var(--mut);font-size:12px;background:var(--panel2);border:1px solid var(--line);
+  padding:2px 8px;border-radius:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;
+  display:flex;flex-direction:column;gap:10px;transition:.15s;position:relative}
+.card:hover{border-color:var(--acc);transform:translateY(-1px)}
+.card.over{border-color:#5a2230;background:linear-gradient(180deg,#241227,#171a35)}
+.crow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.crm{font-size:11px;font-weight:700;color:#bcd0ff;background:#232a5a;border:1px solid #33407e;
+  padding:2px 7px;border-radius:6px}
+.crm:hover{background:#2e3a78}
+.ttl{font-size:13.5px;font-weight:600;line-height:1.35}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--line);color:var(--mut)}
+.chip.who{background:#1c2148;color:#c9d0ff}
+.st{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600}
+.st.g{background:rgba(47,191,113,.14);color:#5fe0a0;border:1px solid rgba(47,191,113,.35)}
+.st.a{background:rgba(245,166,35,.14);color:#ffcb6b;border:1px solid rgba(245,166,35,.35)}
+.st.r{background:rgba(242,84,91,.14);color:#ff8b90;border:1px solid rgba(242,84,91,.35)}
+.note{color:var(--mut);font-size:12px}
+.bar{height:7px;border-radius:6px;background:#23264d;overflow:hidden}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px}
+.pc{display:flex;align-items:center;gap:6px}
+.pc input{width:52px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+  border-radius:7px;padding:4px 6px;font:inherit;text-align:center}
+.dl{display:flex;align-items:center;gap:6px}
+.dl input{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+  border-radius:7px;padding:4px 6px;font:inherit}
+label.mini{color:var(--mut);font-size:11px}
+.saved{position:absolute;top:10px;right:12px;font-size:11px;color:#5fe0a0;opacity:0;transition:.2s}
+.saved.on{opacity:1}
+.err{background:#3a1520;border:1px solid #6a2130;color:#ffb4bc;padding:12px 14px;border-radius:12px;margin:10px 0}
+.loading{color:var(--mut);padding:40px;text-align:center}
+@media(max-width:620px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Интеллебокс · Дашборд запуска</h1>
+      <div class="sub">Критичные задачи и блокеры к запуску. Сроки и % можно менять прямо здесь, они сохраняются.</div>
+    </div>
+    <div class="upd" id="upd">загрузка…</div>
+  </header>
+  <div class="stats" id="stats"></div>
+  <div id="body"><div class="loading">Загрузка данных из Supabase…</div></div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+const SB_URL='https://duugjoccrcdjcdslvthy.supabase.co'
+const SB_KEY='sb_publishable_DdbMJMGYK1JkKaGuhD_xcQ_pfQhA3SV'
+const sb=createClient(SB_URL,SB_KEY)
+
+const SECTIONS=[
+  {key:'bug',title:'🔴 Критичные баги'},
+  {key:'feature',title:'🟣 Фичи'},
+  {key:'other',title:'🔵 Сделано, ждёт прод'},
+  {key:'unformed',title:'⚪ Не оформлено в задачи'},
+]
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))
+function stClass(s){s=(s||'').toLowerCase()
+  if(/закрыт|сделано|готов|выложил/.test(s)) return 'g'
+  if(/работе|частично|проверить|доделать|утвердить|ждёт|изучить/.test(s)) return 'a'
+  return 'r'}
+const today=new Date().toISOString().slice(0,10)
+
+async function load(){
+  const {data,error}=await sb.from('dashboard_tasks').select('*').order('sort')
+  if(error){document.getElementById('body').innerHTML='<div class="err">Ошибка загрузки: '+esc(error.message)+'</div>';return}
+  render(data)
+}
+function render(rows){
+  // stats
+  const bugs=rows.filter(r=>r.category==='bug')
+  const blockers=rows.filter(r=>/блокер/i.test(r.note||'')||/блокер/i.test(r.status||''))
+  const avg=Math.round(rows.reduce((a,r)=>a+(r.percent||0),0)/rows.length)
+  const overdue=rows.filter(r=>r.deadline&&r.deadline<today&&(r.percent||0)<100)
+  document.getElementById('stats').innerHTML=[
+    ['Критичные баги',bugs.length,''],
+    ['Блокеры',blockers.length,''],
+    ['Просрочено',overdue.length,''],
+    ['Средняя готовность',avg+'%','acc'],
+  ].map(([l,n,c])=>`<div class="stat ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('')
+
+  const body=document.getElementById('body');body.innerHTML=''
+  for(const s of SECTIONS){
+    const items=rows.filter(r=>r.category===s.key)
+    if(!items.length) continue
+    const sec=document.createElement('section')
+    sec.innerHTML=`<div class="sh"><h2>${s.title}</h2><span class="cnt">${items.length}</span></div>`
+    const grid=document.createElement('div');grid.className='grid'
+    for(const r of items) grid.appendChild(card(r))
+    sec.appendChild(grid);body.appendChild(sec)
+  }
+  document.getElementById('upd').textContent='Обновлено: '+new Date().toLocaleString('ru-RU')
+}
+function card(r){
+  const over=r.deadline&&r.deadline<today&&(r.percent||0)<100
+  const el=document.createElement('div');el.className='card'+(over?' over':'')
+  const crm=r.crm?`<a class="crm" href="${esc(r.yougile_url)}" target="_blank">${esc(r.crm)}</a>`:''
+  el.innerHTML=`
+    <span class="saved">✓ сохранено</span>
+    <div class="crow">${crm}${r.assignee?`<span class="chip who">${esc(r.assignee)}</span>`:''}
+       <span class="st ${stClass(r.status)}">${esc(r.status||'')}</span></div>
+    <div class="ttl">${esc(r.title)}</div>
+    ${r.note?`<div class="note">${esc(r.note)}</div>`:''}
+    <div class="bar"><i style="width:${r.percent||0}%"></i></div>
+    <div class="foot">
+      <div class="pc"><label class="mini">%</label><input type="number" min="0" max="100" value="${r.percent||0}" data-f="percent"></div>
+      <div class="dl"><label class="mini">срок</label><input type="date" value="${r.deadline||''}" data-f="deadline"></div>
+    </div>`
+  el.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('change',async()=>{
+      const f=inp.dataset.f
+      let v=f==='percent'?Math.max(0,Math.min(100,parseInt(inp.value||'0'))):(inp.value||null)
+      const {error}=await sb.from('dashboard_tasks').update({[f]:v,updated_at:new Date().toISOString()}).eq('id',r.id)
+      if(error){alert('Не сохранилось: '+error.message);return}
+      r[f]=v
+      if(f==='percent'){el.querySelector('.bar>i').style.width=(v||0)+'%';inp.value=v}
+      const sv=el.querySelector('.saved');sv.classList.add('on');setTimeout(()=>sv.classList.remove('on'),1200)
+    })
+  })
+  return el
+}
+load()
+</script>
+</body>
+</html>
