@@ -38,6 +38,8 @@ h1{margin:0;font-size:20px}
 .ed.st{background:rgba(245,166,35,.12);color:#ffcb6b;border-color:rgba(245,166,35,.3)}
 .ed.st.g{background:rgba(47,191,113,.12);color:#5fe0a0;border-color:rgba(47,191,113,.3)}
 .ed.st.r{background:rgba(242,84,91,.12);color:#ff8b90;border-color:rgba(242,84,91,.3)}
+.ed.srok{background:#1a2340;color:#9fb4ff}
+.ed.spent{background:#231a40;color:#c3a6ff}
 input[type=date]{background:var(--panel2);border:1px solid var(--line);color:var(--mut);border-radius:7px;padding:1px 5px;font:inherit;font-size:11px;color-scheme:dark}
 .pc{display:flex;align-items:center;gap:5px}
 .pc .bar{width:46px;height:6px;border-radius:5px;background:#23264d;overflow:hidden}
@@ -60,7 +62,7 @@ input[type=date]{background:var(--panel2);border:1px solid var(--line);color:var
   <header>
     <div>
       <h1>Интеллебокс · Дашборд синков</h1>
-      <div class="sub">Любой текст, ссылку, срок и % можно менять прямо здесь. «＋» - добавить пункт. Всё сохраняется.</div>
+      <div class="sub">Любой текст, ссылку, срок, затраченное время и % меняются прямо здесь. «＋» - добавить пункт. Срок «-» = не определён. Всё сохраняется.</div>
     </div>
     <div class="upd" id="upd">загрузка…</div>
   </header>
@@ -119,7 +121,8 @@ function item(r,b){
     <div class="mt">
       <span class="ed who" contenteditable data-ph="кто">${esc(r.assignee||'')}</span>
       <span class="ed st ${stCls(r.status)}" contenteditable data-ph="статус">${esc(r.status||'')}</span>
-      <input type="date" value="${r.deadline||''}" title="срок">
+      <span class="ed srok" contenteditable data-ph="срок" title="срок">${esc(r.srok||'-')}</span>
+      ${hasPct?`<span class="ed spent" contenteditable data-ph="⏱" title="затрачено, ч">${r.spent!=null?esc(r.spent)+' ч':'-'}</span>`:''}
       ${hasPct?`<span class="pc"><span class="bar"><i style="width:${r.percent||0}%"></i></span><input type="number" min="0" max="100" value="${r.percent??0}"></span>`:''}
       <span class="spacer"></span>
       ${r.link?`<a href="${esc(r.link)}" target="_blank" class="ic" title="открыть">🔗</a>`:''}
@@ -132,7 +135,10 @@ function item(r,b){
   who.addEventListener('blur',()=>{const v=who.textContent.trim();if(v!==(r.assignee||'')){r.assignee=v;save(r.id,'assignee',v||null)}})
   const st=el.querySelector('.st')
   st.addEventListener('blur',()=>{const v=st.textContent.trim();if(v!==(r.status||'')){r.status=v;save(r.id,'status',v||null);st.className='ed st '+stCls(v)}})
-  el.querySelector('input[type=date]').addEventListener('change',e=>{r.deadline=e.target.value||null;save(r.id,'deadline',r.deadline)})
+  const sr=el.querySelector('.srok')
+  sr.addEventListener('blur',()=>{let v=sr.textContent.trim()||'-';if(v!==(r.srok||'-')){r.srok=v;sr.textContent=v;save(r.id,'srok',v)}})
+  const spn=el.querySelector('.spent')
+  if(spn)spn.addEventListener('blur',()=>{let t=spn.textContent.replace(/[^\d.,]/g,'').replace(',','.');let v=t===''?null:parseFloat(t);if(v!==r.spent){r.spent=v;save(r.id,'spent',v);spn.textContent=v!=null?v+' ч':'-'}})
   const pct=el.querySelector('.pc input')
   if(pct)pct.addEventListener('change',e=>{let v=Math.max(0,Math.min(100,parseInt(e.target.value||'0')));r.percent=v;e.target.value=v;el.querySelector('.pc .bar>i').style.width=v+'%';save(r.id,'percent',v)})
   el.querySelector('.editlink').onclick=async()=>{const v=prompt('Ссылка (YouGile / видео / любая). Пусто = убрать:',r.link||'');if(v===null)return;r.link=v.trim()||null;await save(r.id,'link',r.link);load()}
