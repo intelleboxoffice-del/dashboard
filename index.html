@@ -16,6 +16,14 @@ header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
 h1{margin:0;font-size:20px}
 .sub{color:var(--mut);font-size:12px}
 .upd{color:var(--mut);font-size:12px}
+.tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px}
+.tab{cursor:pointer;background:var(--panel);border:1px solid var(--line);color:var(--mut);border-radius:10px;padding:7px 12px;font:inherit;font-size:13px;display:flex;align-items:center;gap:6px}
+.tab:hover{color:#fff;border-color:var(--acc)}
+.tab.on{background:var(--panel2);color:#fff;border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.tab .tc{font-size:11px;color:var(--mut);background:#23264d;border-radius:20px;padding:0 7px}
+.tab.on .tc{color:#c9d0ff}
+.single{max-width:920px}
+.tile.full{min-height:220px}
 .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;align-items:start}
 .tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 12px 10px;
   display:flex;flex-direction:column;min-height:120px}
@@ -66,7 +74,8 @@ input[type=date]{background:var(--panel2);border:1px solid var(--line);color:var
     </div>
     <div class="upd" id="upd">загрузка…</div>
   </header>
-  <div class="grid" id="grid"><div class="err" style="grid-column:1/-1;background:none;border:none;color:#9aa0d0">Загрузка из Supabase…</div></div>
+  <div class="tabs" id="tabs"></div>
+  <div id="content"><div class="err" style="background:none;border:none;color:#9aa0d0">Загрузка из Supabase…</div></div>
 </div>
 <div class="saved" id="toast">✓ сохранено</div>
 
@@ -91,27 +100,53 @@ let toastT
 function toast(){const t=document.getElementById('toast');t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),1100)}
 async function save(id,field,value){const {error}=await sb.from('dash_items').update({[field]:value,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert('Не сохранилось: '+error.message);return false}toast();return true}
 
+let DATA=[]
+let active=decodeURIComponent(location.hash.slice(1))||'overview'
+function makeTile(b,compact){
+  const items=DATA.filter(r=>r.block===b.k)
+  const tile=document.createElement('div');tile.className='tile'+(compact?'':' full')
+  if(compact)tile.style.gridColumn='span '+b.span
+  const head=document.createElement('div');head.className='th'
+  head.innerHTML=`<h2>${b.t}</h2><span class="cnt">${items.length}</span>`
+  const add=document.createElement('div');add.className='add';add.textContent='＋';add.title='Добавить пункт'
+  add.onclick=async()=>{
+    const sort=(items.reduce((m,r)=>Math.max(m,r.sort),0)||0)+1
+    const {data:ins,error}=await sb.from('dash_items').insert({block:b.k,text:'',sort}).select()
+    if(error){alert(error.message);return}
+    await load();const el=document.querySelector('.it[data-id="'+ins[0].id+'"] .tx');if(el)el.focus()
+  }
+  head.appendChild(add);tile.appendChild(head)
+  for(const r of items) tile.appendChild(item(r,b))
+  return tile
+}
+function renderTabs(){
+  const tabs=document.getElementById('tabs');tabs.innerHTML=''
+  const list=[{k:'overview',t:'📋 Обзор'},...BLOCKS]
+  for(const b of list){
+    const cnt=b.k==='overview'?DATA.length:DATA.filter(r=>r.block===b.k).length
+    const el=document.createElement('button');el.className='tab'+(active===b.k?' on':'')
+    el.innerHTML=esc(b.t)+` <span class="tc">${cnt}</span>`
+    el.onclick=()=>{active=b.k;location.hash=encodeURIComponent(b.k);renderTabs();renderContent()}
+    tabs.appendChild(el)
+  }
+}
+function renderContent(){
+  const c=document.getElementById('content');c.innerHTML=''
+  if(active==='overview'){
+    const grid=document.createElement('div');grid.className='grid'
+    for(const b of BLOCKS) grid.appendChild(makeTile(b,true))
+    c.appendChild(grid)
+  }else{
+    const b=BLOCKS.find(x=>x.k===active)
+    if(!b){active='overview';return renderContent()}
+    const wrap=document.createElement('div');wrap.className='single'
+    wrap.appendChild(makeTile(b,false));c.appendChild(wrap)
+  }
+}
 async function load(){
   const {data,error}=await sb.from('dash_items').select('*').order('block').order('sort')
-  const grid=document.getElementById('grid')
-  if(error){grid.innerHTML='<div class="err" style="grid-column:1/-1">Ошибка: '+esc(error.message)+'</div>';return}
-  grid.innerHTML=''
-  for(const b of BLOCKS){
-    const items=data.filter(r=>r.block===b.k)
-    const tile=document.createElement('div');tile.className='tile';tile.style.gridColumn='span '+b.span
-    const head=document.createElement('div');head.className='th'
-    head.innerHTML=`<h2>${b.t}</h2><span class="cnt">${items.length}</span>`
-    const add=document.createElement('div');add.className='add';add.textContent='＋';add.title='Добавить пункт'
-    add.onclick=async()=>{
-      const sort=(items.reduce((m,r)=>Math.max(m,r.sort),0)||0)+1
-      const {data:ins,error}=await sb.from('dash_items').insert({block:b.k,text:'',sort}).select()
-      if(error){alert(error.message);return}
-      load().then(()=>{const el=document.querySelector('.it[data-id="'+ins[0].id+'"] .tx');if(el)el.focus()})
-    }
-    head.appendChild(add);tile.appendChild(head)
-    for(const r of items) tile.appendChild(item(r,b))
-    grid.appendChild(tile)
-  }
+  if(error){document.getElementById('content').innerHTML='<div class="err">Ошибка: '+esc(error.message)+'</div>';return}
+  DATA=data;renderTabs();renderContent()
   document.getElementById('upd').textContent='Обновлено: '+new Date().toLocaleString('ru-RU')
 }
 function item(r,b){
